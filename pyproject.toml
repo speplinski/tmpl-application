@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=64.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tmpl_app"
+version = "1.0.0"
+dependencies = [
+    "numpy",
+    "opencv-python",
+    "depthai",
+    "psutil",
+    "av>=10.0.0",
+    "Pillow>=10.0.0",
+    "pysdl2>=0.9.16",
+    "pysdl2-dll>=2.28.0"
+]
+requires-python = ">=3.7"
