@@ -1,5 +1,6 @@
 from typing import Dict, List
 from pathlib import Path
+from apps.generator.utils.dynamic_config import get_project_root
 
 # Image processing constants
 TARGET_WIDTH = 3840
@@ -10,11 +11,12 @@ DEFAULT_IMAGE_TYPE = 'bmp'
 
 # Base paths
 def get_base_paths(panorama_id: str) -> Dict[str, Path]:
+    project_root = get_project_root()
     return {
-        'base': Path(f'./landscapes/{panorama_id}'),
-        'sequences': Path(f'./landscapes/{panorama_id}/sequences'),
-        'output': Path(f'./landscapes/{panorama_id}'),
-        'results': Path('./results')
+        'base': project_root / 'data' / 'landscapes' / panorama_id,
+        'sequences': project_root / 'data' / 'landscapes' / panorama_id / 'sequences',
+        'output': project_root / 'data' / 'landscapes' / panorama_id,
+        'results': project_root / 'results'
     }
 
 # File monitoring

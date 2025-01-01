@@ -14,6 +14,15 @@ from .constants import (
     MAX_SEQUENCES
 )
 
+from .diagnostic import InitializationDiagnostic
+from .dynamic_config import (
+    get_project_root,
+    get_landscapes_dir,
+    load_mask_mapping,
+    scan_directory,
+    create_dynamic_config
+)
+
 __all__ = [
     'TARGET_WIDTH',
     'TARGET_HEIGHT',
@@ -23,5 +32,15 @@ __all__ = [
     'DEFAULT_SIMPLIFIED_CONFIG',
     'MONITORING_INTERVAL',
     'LOG_FILENAME',
-    'MAX_SEQUENCES'
+    'MAX_SEQUENCES',
+    
+    # Diagnostic tools
+    'InitializationDiagnostic',
+    
+    # Dynamic configuration
+    'get_project_root',
+    'get_landscapes_dir',
+    'load_mask_mapping',
+    'scan_directory',
+    'create_dynamic_config'
 ]

@@ -4,9 +4,14 @@ from typing import Dict, List, Tuple
 import os
 
 def get_project_root() -> Path:
-    """Returns the path to the Generator directory"""
+    """Returns the path to the project root directory"""
     current_file = Path(__file__)
-    return current_file.parent.parent.parent.parent  # Generator directory
+    
+    for parent in [current_file, *current_file.parents]:
+        if (parent / "apps").is_dir():
+            return parent
+        
+    raise RuntimeError("Could not find Generator directory in path hierarchy")
 
 def get_landscapes_dir() -> Path:
     """Returns the path to the landscapes directory"""

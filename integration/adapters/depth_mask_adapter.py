@@ -12,7 +12,9 @@ from apps.depth_tracking.column_analyzer import ColumnAnalyzer
 from apps.generator.core.tmpl_monitor import TMPLMonitor
 from apps.generator.configs.mask_config import MaskConfig
 from apps.generator.utils.dynamic_config import get_project_root
+from apps.generator.utils.diagnostic import InitializationDiagnostic
 from ..utils.console_logger import ConsoleLogger
+
 
 class DepthMaskAdapter:
     """
@@ -41,6 +43,10 @@ class DepthMaskAdapter:
     def _initialize_mask_system(self):
         """Initialize mask system configuration"""
         try:
+            diagnostic = InitializationDiagnostic()
+            if not diagnostic.run_diagnostics():
+                raise RuntimeError("Initialization diagnostic failed")
+        
             # Get project root and mapping file path
             project_root = get_project_root()
             mapping_path = project_root / 'data' / 'mask_mapping.json'
@@ -71,6 +77,8 @@ class DepthMaskAdapter:
                 mask_configs=[mask_config],
                 logger=self.logger  # Pass our logger
             )
+
+            self._initialize_masks()
             
             self.logger.log(f"Mask system initialized: {panorama_id}")
             self.logger.log(f"Gray values/indexes: {mask_config.gray_indexes}")
@@ -78,6 +86,23 @@ class DepthMaskAdapter:
         except Exception as e:
             self.logger.log(f"Error initializing mask system: {e}")
             raise
+
+    def _initialize_masks(self):
+        """Initialize and load all masks"""
+        self.logger.log("Loading masks...")
+        
+        for name, manager in self.tmpl_monitor.mask_managers.items():
+            self.logger.log(f"Loading static masks for {name}")
+            manager.load_static_masks()
+            
+        self.logger.log("Loading sequence frames...")
+        total_frames = 0
+        for name, manager in self.tmpl_monitor.mask_managers.items():
+            frames = manager.load_sequence_frames()
+            total_frames += frames
+            self.logger.log(f"Loaded {frames} frames for {name}")
+            
+        self.logger.log(f"Total frames loaded: {total_frames}")
 
     def create_pipeline(self) -> dai.Pipeline:
         """Create and configure the OAK-D pipeline."""

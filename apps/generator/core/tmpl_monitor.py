@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List
 
 from ..configs.mask_config import MaskConfig
+from apps.generator.utils.dynamic_config import get_project_root
 from .mask_manager import MaskManager
 
 class TMPLMonitor:
@@ -10,13 +11,16 @@ class TMPLMonitor:
         self.panorama_id = panorama_id
         self.logger = logger
         self.previous_state = None
-        
+
+        # Get project root for absolute paths
+        project_root = get_project_root()
+    
         # Setup paths
         self.base_paths = {
-            'base': Path(f'./landscapes/{panorama_id}'),
-            'sequences': Path(f'./landscapes/{panorama_id}/sequences'),
-            'output': Path(f'./landscapes/{panorama_id}'),
-            'results': Path('./results')
+            'base': project_root / 'data' / 'landscapes' / panorama_id,
+            'sequences': project_root / 'data' / 'landscapes' / panorama_id / 'sequences',
+            'output': project_root / 'data' / 'landscapes' / panorama_id,
+            'results': project_root / 'results'
         }
         self.base_paths['results'].mkdir(exist_ok=True)
         
