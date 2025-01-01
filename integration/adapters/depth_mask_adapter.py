@@ -92,7 +92,6 @@ class DepthMaskAdapter:
         self.logger.log("Loading masks...")
         
         for name, manager in self.tmpl_monitor.mask_managers.items():
-            self.logger.log(f"Loading static masks for {name}")
             manager.load_static_masks()
             
         self.logger.log("Loading sequence frames...")

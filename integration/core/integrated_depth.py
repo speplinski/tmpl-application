@@ -1,4 +1,3 @@
-# integrated_depth.py
 import time
 import cv2
 import threading

@@ -1,4 +1,3 @@
-# tmpl_monitor.py
 from pathlib import Path
 from typing import List
 
@@ -26,7 +25,12 @@ class TMPLMonitor:
         
         # Initialize components
         self.mask_managers = {
-            config.name: MaskManager(config, panorama_id, self.base_paths)
+            config.name: MaskManager(
+                config=config, 
+                panorama_id=panorama_id, 
+                base_paths=self.base_paths,
+                logger=logger
+            )
             for config in mask_configs
         }
 
