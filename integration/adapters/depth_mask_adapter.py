@@ -36,6 +36,9 @@ class DepthMaskAdapter:
         self.pipeline: Optional[dai.Pipeline] = None
         self.depth_queue: Optional[dai.DataOutputQueue] = None
         self.spatial_calc_queue: Optional[dai.DataOutputQueue] = None
+
+        # Process timing
+        self.last_process_time = 0.0
         
         # Mask system components
         self._initialize_mask_system()
@@ -202,16 +205,18 @@ class DepthMaskAdapter:
         }
         self.logger.update_stats(stats)
 
-        # Process masks if there are active positions
+        # Process masks if there are active positions and enough time has passed
+        current_time = time.time()
         active_sequences = []
         for i, count in enumerate(counters):
             if count > 0:
                 frame_num = min(count, 10)  # Limit to max 10 frames
                 active_sequences.append((i, frame_num))
 
-        if active_sequences:
+        if active_sequences and (current_time - self.last_process_time >= self.config.COUNTER_INCREMENT_INTERVAL):
             try:
                 self.tmpl_monitor.process_state(counters)
+                self.last_process_time = current_time
             except Exception as e:
                 self.logger.log(f"Error processing mask: {e}")
 

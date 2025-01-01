@@ -35,7 +35,6 @@ class DepthTracker:
             column_presence: List of binary values indicating presence (1) or absence (0)
         """
         current_time = time.time()
-        changed = False
 
         # Check all positions (0-9)
         for i in range(10):
