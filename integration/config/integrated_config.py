@@ -35,7 +35,7 @@ class IntegratedConfig:
 
     # SPADE configuration
     spade_device_type: str = 'auto'
-    spade_input_dir: Path = Path('input')  
+    spade_input_dir: Path = Path('results')  
     spade_output_dir: Path = Path('output')
 
     def to_depth_config(self) -> DepthConfig:

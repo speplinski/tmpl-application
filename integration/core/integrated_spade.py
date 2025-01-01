@@ -1,3 +1,5 @@
+import time
+import os
 from pathlib import Path
 from ..config import IntegratedConfig
 from ..adapters import SpadeAdapter
@@ -7,7 +9,7 @@ class IntegratedSpade:
     def __init__(self, config: IntegratedConfig):
         self.logger = ConsoleLogger(name="Spade")
         self.config = config
-        self.last_processed_mask = None
+        self.file_counter = 1 
         
         # Initialize SPADE
         self.adapter = SpadeAdapter(
@@ -19,29 +21,51 @@ class IntegratedSpade:
         self.config.spade_input_dir.mkdir(parents=True, exist_ok=True)
         self.config.spade_output_dir.mkdir(parents=True, exist_ok=True)
 
+    def _get_next_filename(self) -> str:
+        """Generate next filename with padding."""
+        filename = f"{self.file_counter:09d}.jpg"
+        self.file_counter += 1
+        return filename
+
     def watch_and_process(self):
         """Monitor input directory for new masks."""
         try:
-            mask_files = sorted(self.config.spade_input_dir.glob("*.bmp"))
+            # Get BMP files sorted by creation time
+            mask_files = sorted(
+                self.config.spade_input_dir.glob("*.bmp"),
+                key=lambda x: x.stat().st_ctime
+            )
+            
             if not mask_files:
                 return
                 
-            latest_mask = mask_files[-1]
-            if latest_mask == self.last_processed_mask:
-                return
-                
-            self.logger.log(f"Found new mask: {latest_mask.name}")
-            success = self.process_mask(latest_mask.name)
+            # Process oldest file
+            mask_file = mask_files[0]
             
-            if success:
-                self.last_processed_mask = latest_mask
-                
+            try:
+                # Try to process
+                if self.process_mask(mask_file.name):
+                    # If successful, delete the input file
+                    try:
+                        os.remove(mask_file)
+                    except:
+                        pass  # Ignore deletion errors
+            except:
+                # If any error occurs during processing, just try to delete and continue
+                try:
+                    os.remove(mask_file)
+                except:
+                    pass
+
         except Exception as e:
-            self.logger.log(f"Error in watch_and_process: {e}")
+            self.logger.log(f"Error in processing loop: {e}")
 
     def process_mask(self, mask_filename: str) -> bool:
         """Process a single mask file."""
         input_path = self.config.spade_input_dir / mask_filename
-        output_path = self.config.spade_output_dir / f"{Path(mask_filename).stem}_gen.jpg"
+        output_path = self.config.spade_output_dir / self._get_next_filename()
         
+        if not input_path.exists():
+            return False
+            
         return self.adapter.process_mask(input_path, output_path)
