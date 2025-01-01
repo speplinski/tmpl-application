@@ -13,6 +13,10 @@ def parse_arguments():
                        help='Disable depth visualization')
     parser.add_argument('--mirror', action='store_true',
                        help='Enable mirror mode')
+    parser.add_argument('--disable-spade', action='store_true',
+                       help='Disable SPADE processing')
+    parser.add_argument('--spade-device', type=str, default='auto',
+                       help='Device for SPADE (cuda/mps/cpu/auto)')
     return parser.parse_args()
 
 def main():
@@ -25,6 +29,8 @@ def main():
         config.debug_mode = args.debug
         config.show_visualization = not args.no_visualization
         config.mirror_mode = args.mirror
+        config.enable_mask_generation = not args.disable_spade
+        config.spade_device_type = args.spade_device
         
         # Initialize integrated display system
         display = IntegratedDisplay(config, monitor_index=args.monitor)

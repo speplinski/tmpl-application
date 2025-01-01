@@ -4,13 +4,16 @@ import threading
 from threading import Lock
 from typing import Optional, Dict, Any, Tuple
 
+from integration.utils.console_logger import ConsoleLogger
+
 from ..config import IntegratedConfig
 from ..adapters import DepthMaskAdapter
 
 class IntegratedDepth:
-    def __init__(self, config: IntegratedConfig):
+    def __init__(self, config: IntegratedConfig, adapter: DepthMaskAdapter):
+        self.logger = ConsoleLogger(name="IntegratedDepth")
         self.config = config
-        self.adapter = DepthMaskAdapter()
+        self.adapter = adapter
         
         self._running = False
         self._thread: Optional[threading.Thread] = None

@@ -21,15 +21,14 @@ class DepthMaskAdapter:
     Adapter that manages OAK-D camera pipeline and depth tracking functionality,
     integrated with mask generation system.
     """
-    def __init__(self):
+    def __init__(self, logger=None):
+        self.logger = logger or ConsoleLogger(name="DepthAdapter")
+        
         # Depth tracking components
         self.config = Config()
         self.depth_tracker = DepthTracker()
         self.visualizer = Visualizer(self.config)
         self.column_analyzer = ColumnAnalyzer(self.config)
-        
-        # Logger setup
-        self.logger = ConsoleLogger()
         
         # Camera components
         self.device: Optional[dai.Device] = None

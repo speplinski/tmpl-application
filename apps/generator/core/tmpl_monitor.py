@@ -1,14 +1,16 @@
 from pathlib import Path
 from typing import List
 
+from integration.utils.console_logger import ConsoleLogger
+
 from ..configs.mask_config import MaskConfig
 from apps.generator.utils.dynamic_config import get_project_root
 from .mask_manager import MaskManager
 
 class TMPLMonitor:
     def __init__(self, panorama_id: str, mask_configs: List[MaskConfig], logger=None):
+        self.logger = logger or ConsoleLogger(name="Generator (TMPLMonitor)")
         self.panorama_id = panorama_id
-        self.logger = logger
         self.previous_state = None
 
         # Get project root for absolute paths

@@ -12,15 +12,20 @@ class FileLogger:
        timestamp = datetime.now().strftime("%Y%m%d")
        log_file = self.log_dir / f"{name}_{timestamp}.log"
        
-       file_handler = logging.FileHandler(log_file)
-       file_handler.setLevel(logging.INFO)
-       
-       formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-       file_handler.setFormatter(formatter)
-       
+       # Get or create logger instance
        self.logger = logging.getLogger(name)
-       self.logger.setLevel(logging.INFO)
-       self.logger.addHandler(file_handler)
+       
+       # Only configure logger if it hasn't been configured before
+       if not self.logger.handlers:
+           self.logger.setLevel(logging.INFO)
+           
+           file_handler = logging.FileHandler(log_file)
+           file_handler.setLevel(logging.INFO)
+           
+           formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+           file_handler.setFormatter(formatter)
+           
+           self.logger.addHandler(file_handler)
 
    def log(self, message: str):
        self.logger.info(message)

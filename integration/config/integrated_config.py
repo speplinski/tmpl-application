@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Tuple, Dict, Any
+from pathlib import Path
 from apps.depth_tracking.config import Config as DepthConfig
 from apps.generator.configs.mask_config import MaskConfig
 
@@ -31,6 +32,11 @@ class IntegratedConfig:
     # Runtime states
     is_running: bool = True
     debug_mode: bool = False
+
+    # SPADE configuration
+    spade_device_type: str = 'auto'
+    spade_input_dir: Path = Path('input')  
+    spade_output_dir: Path = Path('output')
 
     def to_depth_config(self) -> DepthConfig:
         """Convert to depth tracking configuration"""
