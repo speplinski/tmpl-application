@@ -9,6 +9,7 @@ class TMPLMonitor:
     def __init__(self, panorama_id: str, mask_configs: List[MaskConfig], logger=None):
         self.panorama_id = panorama_id
         self.logger = logger
+        self.previous_state = None
         
         # Setup paths
         self.base_paths = {
@@ -30,11 +31,19 @@ class TMPLMonitor:
         if not state or not any(state):
             return
 
+        if state == self.previous_state:
+            return
+
         try:
+            # Create active sequences list
             active_sequences = []
             for seq_num, frame_num in enumerate(state):
                 if frame_num > 0:
                     active_sequences.append((seq_num, frame_num))
+            
+            # Log new active sequences
+            if self.logger:
+                self.logger.log(f"Active sequences: {active_sequences}")
             
             # Process each configuration
             for name, manager in self.mask_managers.items():
@@ -45,6 +54,8 @@ class TMPLMonitor:
                 result_path = manager.process_and_save(config_state)
                 if result_path and self.logger:
                     self.logger.log(f"Generated: {result_path.name}")
+
+            self.previous_state = state.copy()
         
         except Exception as e:
             if self.logger:

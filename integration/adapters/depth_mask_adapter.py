@@ -188,7 +188,6 @@ class DepthMaskAdapter:
         if active_sequences:
             try:
                 self.tmpl_monitor.process_state(counters)
-                self.logger.log(f"Active sequences: {active_sequences}")
             except Exception as e:
                 self.logger.log(f"Error processing mask: {e}")
 

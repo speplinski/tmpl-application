@@ -15,10 +15,18 @@ class MaskManager:
         self.sequence_frames = {}
         self.sequence_max_frames = {}
         self.results_index = 0
+        self.previous_mask = None
         
         # Create results directory
         self.results_dir = base_paths['results']
         self.results_dir.mkdir(exist_ok=True)
+
+    def _masks_are_different(self, new_mask: np.ndarray) -> bool:
+        """Compare new mask with previous mask"""
+        if self.previous_mask is None:
+            return True
+            
+        return not np.array_equal(new_mask, self.previous_mask)
 
     def process_and_save(self, state: Dict[int, List[Tuple[int, int]]]) -> Optional[Path]:
         """Process current state and save result mask."""

@@ -8,7 +8,8 @@ class FileLogger:
        self.log_dir = Path("logs")
        self.log_dir.mkdir(exist_ok=True)
        
-       timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+       #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+       timestamp = datetime.now().strftime("%Y%m%d")
        log_file = self.log_dir / f"{name}_{timestamp}.log"
        
        file_handler = logging.FileHandler(log_file)
