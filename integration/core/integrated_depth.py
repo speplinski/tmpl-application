@@ -15,12 +15,8 @@ class IntegratedDepth:
         self.config = config
         self.adapter = adapter
         
-        # Update adapter config with values from IntegratedConfig
-        self.adapter.config.COUNTER_INCREMENT_INTERVAL = config.counter_increment_interval
-        self.adapter.config.MIRROR_MODE = config.mirror_mode
-        self.adapter.config.DISPLAY_WINDOW = config.display_window
-        self.adapter.config.SHOW_STATS = config.show_stats
-        self.adapter.config.SHOW_CONSOLE_PREVIEW = config.show_visualization
+         # Initialize adapter config from IntegratedConfig
+        self._update_adapter_config(config)
         
         self._running = False
         self._thread: Optional[threading.Thread] = None
@@ -32,6 +28,20 @@ class IntegratedDepth:
         self._error_state = False
         self.prev_buffer = None
 
+    def _update_adapter_config(self, config: IntegratedConfig):
+        """Update adapter configuration from IntegratedConfig"""
+        self.adapter.config.COUNTER_INCREMENT_INTERVAL = config.counter_increment_interval
+        self.adapter.config.MIRROR_MODE = config.mirror_mode
+        self.adapter.config.DISPLAY_WINDOW = config.display_window
+        self.adapter.config.SHOW_STATS = config.show_stats
+        self.adapter.config.SHOW_CONSOLE_PREVIEW = config.show_visualization
+
+    def update_config(self, new_config: IntegratedConfig):
+        """Update configuration with new settings"""
+        with self._lock:
+            self.config = new_config
+            self._update_adapter_config(new_config)
+            
     def start(self) -> bool:
         if self._running:
             return True
@@ -58,14 +68,6 @@ class IntegratedDepth:
     def get_latest_data(self) -> Tuple[Optional[Dict[str, Any]], Optional[cv2.Mat]]:
         with self._lock:
             return self._latest_data, self._latest_heatmap
-
-    def update_config(self, new_config: IntegratedConfig):
-        with self._lock:
-            self.config = new_config
-            self.adapter.config.MIRROR_MODE = new_config.mirror_mode
-            self.adapter.config.DISPLAY_WINDOW = new_config.display_window
-            self.adapter.config.SHOW_STATS = new_config.show_stats
-            self.adapter.config.SHOW_CONSOLE_PREVIEW = new_config.show_visualization
 
     def _processing_loop(self):
         try:

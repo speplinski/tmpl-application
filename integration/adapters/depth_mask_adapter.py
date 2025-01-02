@@ -99,7 +99,7 @@ class DepthMaskAdapter:
         self.logger.log("Loading sequence frames...")
         total_frames = 0
         for name, manager in self.tmpl_monitor.mask_managers.items():
-            frames = manager.load_sequence_frames()
+            frames = manager.scan_sequences()
             total_frames += frames
             self.logger.log(f"Loaded {frames} frames for {name}")
             
