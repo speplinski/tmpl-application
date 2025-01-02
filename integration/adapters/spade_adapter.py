@@ -5,24 +5,34 @@ import sys
 from pathlib import Path
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 from apps.generator.utils.dynamic_config import get_project_root
 from apps.spade.options.test_options import TestOptions
 from apps.spade.models.pix2pix_model import Pix2PixModel
 
 class SpadeAdapter:
-    def __init__(self, device_type: str = 'auto', logger=None):
+    def __init__(self, device_type: str = 'auto', logger=None, bypass_spade: bool = False, colormap: str = 'viridis'):
         """
         Initialize SPADE adapter for processing masks.
         
         Args:
             device_type: Device to use ('cuda', 'mps', 'cpu' or 'auto')
             logger: Optional logger instance for logging
+            bypass_spade: If True, bypass SPADE and directly colorize masks
+            colormap: Colormap to use when bypassing SPADE
         """
         self.logger = logger
         self.device = self._setup_device(device_type)
+        self.bypass_spade = bypass_spade
+        self.colormap = colormap
+        
         if self.logger:
             self.logger.log(f"Using device: {self.device}")
-        self.model = self._initialize_model()
+        
+        if not self.bypass_spade:
+            self.model = self._initialize_model()
+        else:
+            self.model = None
         
     def _setup_device(self, device_type: str) -> torch.device:
         """Setup computation device."""
@@ -60,6 +70,23 @@ class SpadeAdapter:
         if self.logger:
             self.logger.log("Model initialized successfully")
         return model
+    
+    def _colorize_mask(self, mask: np.ndarray) -> np.ndarray:
+        """
+        Colorize a grayscale mask using the specified colormap.
+        
+        Args:
+            mask: Grayscale mask array
+            
+        Returns:
+            Colorized mask as RGB image
+        """
+        # Normalize mask to 0-1 range
+        mask_norm = mask.astype(float) / 255.0
+        colored = plt.get_cmap(self.colormap)(mask_norm)
+        colored_rgb = (colored[:, :, :3] * 255).astype(np.uint8)
+        
+        return colored_rgb
         
     def process_mask(self, mask_path: Union[str, Path], output_path: Union[str, Path]) -> bool:
         """
@@ -75,52 +102,56 @@ class SpadeAdapter:
         try:
             if self.logger:
                 self.logger.log(f"Processing mask: {mask_path}")
-                
+
             # Load mask
             mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
             if mask is None:
                 if self.logger:
                     self.logger.log(f"Failed to load mask: {mask_path}")
                 return False
-                
-            # Prepare data
-            mask_tensor = torch.from_numpy(mask).unsqueeze(0).float().to(self.device)
-            data = {
-                'label': mask_tensor.unsqueeze(0),
-                'instance': torch.zeros(1).to(self.device),
-                'image': torch.zeros(1, 3, mask.shape[0], mask.shape[1]).to(self.device)
-            }
-            
-            # Generate
-            with torch.no_grad():
-                if self.device.type == 'cuda':
-                    with torch.cuda.amp.autocast():
+
+            if self.bypass_spade:
+                # Direct colorization
+                img = self._colorize_mask(mask)
+            else:
+                # Prepare data
+                mask_tensor = torch.from_numpy(mask).unsqueeze(0).float().to(self.device)
+                data = {
+                    'label': mask_tensor.unsqueeze(0),
+                    'instance': torch.zeros(1).to(self.device),
+                    'image': torch.zeros(1, 3, mask.shape[0], mask.shape[1]).to(self.device)
+                }
+
+                # Generate
+                with torch.no_grad():
+                    if self.device.type == 'cuda':
+                        with torch.cuda.amp.autocast():
+                            generated = self.model(data, mode='inference')
+                    else:
                         generated = self.model(data, mode='inference')
-                else:
-                    generated = self.model(data, mode='inference')
-            
-            # Process and save output
-            img = ((generated[0].cpu().numpy() * 0.5 + 0.5) * 255).clip(0, 255).astype(np.uint8)
-            if img.shape[0] == 3:
-                img = img.transpose(1, 2, 0)
-                
+
+                # Process and save output
+                img = ((generated[0].cpu().numpy() * 0.5 + 0.5) * 255).clip(0, 255).astype(np.uint8)
+                if img.shape[0] == 3:
+                    img = img.transpose(1, 2, 0)
+    
+                # Cleanup
+                del generated, data
+                if self.device.type == 'cuda':
+                    torch.cuda.empty_cache()
+                elif self.device.type == 'mps':
+                    torch.mps.empty_cache()
+ 
             # Ensure output directory exists
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             
             # Save result
             cv2.imwrite(str(output_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR), 
                        [cv2.IMWRITE_JPEG_QUALITY, 95])
-            
+
             if self.logger:
                 self.logger.log(f"Saved result to: {output_path}")
-                       
-            # Cleanup
-            del generated, data
-            if self.device.type == 'cuda':
-                torch.cuda.empty_cache()
-            elif self.device.type == 'mps':
-                torch.mps.empty_cache()
-                
+
             return True
             
         except Exception as e:

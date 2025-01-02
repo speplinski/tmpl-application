@@ -14,7 +14,9 @@ class IntegratedSpade:
         # Initialize SPADE
         self.adapter = SpadeAdapter(
             device_type=config.spade_device_type,
-            logger=self.logger
+            logger=self.logger,
+            bypass_spade=config.bypass_spade,
+            colormap=config.colormap
         )
 
         # Ensure directories exist

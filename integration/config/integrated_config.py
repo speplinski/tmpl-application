@@ -34,6 +34,8 @@ class IntegratedConfig:
     debug_mode: bool = False
 
     # SPADE configuration
+    bypass_spade: bool = True
+    colormap: str = 'viridis'
     spade_device_type: str = 'auto'
     spade_input_dir: Path = Path('results')  
     spade_output_dir: Path = Path('output')
