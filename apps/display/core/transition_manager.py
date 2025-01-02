@@ -1,9 +1,9 @@
 import sdl2
-from ..config import AppConfig
+from integration.config import IntegratedConfig
 
 class TransitionManager:
     """Handles transitions between different playback states"""
-    def __init__(self, renderer, config):
+    def __init__(self, renderer, config: IntegratedConfig):
         self.renderer = renderer
         self.config = config
 

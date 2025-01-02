@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, List, Any
 from pathlib import Path
 from apps.depth_tracking.config import Config as DepthConfig
 from apps.generator.configs.mask_config import MaskConfig
@@ -7,8 +7,53 @@ from apps.generator.configs.mask_config import MaskConfig
 @dataclass
 class IntegratedConfig:
     """
-    Integrated configuration combining settings from all components
+    Unified configuration for the entire application
     """
+    # Display configuration
+    final_resolution: Tuple[int, int] = (3840, 2160)
+    final_resolution_model: Tuple[int, int] = (3840, 1280)
+    
+    @property
+    def final_resolution_offset(self) -> int:
+        return (self.final_resolution[1] - self.final_resolution_model[1]) >> 1
+
+    # Playback configuration
+    buffer_size: int = 4
+    frame_step: int = 1
+    source_fps: float = 1.0
+    frames_to_interpolate: int = 30
+    
+    # Sequence configuration
+    sequences: List[Dict[str, str]] = field(default_factory=lambda: [
+        {
+            'image_directory': 'data/sequences/P1100142/',
+            'overlay_path': 'data/overlays/P1100142.png',
+            'video_path': 'data/movies/P1100142.mp4'
+        },
+        {
+            'image_directory': 'data/sequences/0145/',
+            'overlay_path': 'data/overlays/0145.png',
+            'video_path': 'data/movies/0145.mp4'
+        }
+    ])
+    current_sequence_index: int = 0
+    
+    # Timing configuration
+    video_trigger_frame: int = 240 # Frame to start video
+    video_trigger_time: float = 120.0 # Time (seconds) to start video
+    fade_duration: float = 2.0
+    
+    @property
+    def total_fps(self) -> float:
+        return self.source_fps * (self.frames_to_interpolate + 1)
+        
+    def get_current_sequence(self):
+        return self.sequences[self.current_sequence_index]
+
+    def next_sequence(self):
+        self.current_sequence_index = (self.current_sequence_index + 1) % len(self.sequences)
+        return self.get_current_sequence()
+    
     # Depth tracking configuration
     min_depth_threshold: float = 0.4  # meters
     max_depth_threshold: float = 1.8  # meters

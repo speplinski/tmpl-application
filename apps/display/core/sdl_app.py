@@ -2,10 +2,11 @@ import os
 import sdl2
 import sdl2.sdlttf
 import ctypes
-from ..config import AppConfig
+from integration.config import IntegratedConfig
 
 class SDLApp:
-    def __init__(self, monitor_index=1):
+    def __init__(self, monitor_index: int, config: IntegratedConfig):
+        self.config = config
         self._init_sdl()
         self.window, self.renderer = self._create_window_and_renderer(monitor_index)
         self.font = self._init_font()
@@ -45,8 +46,16 @@ class SDLApp:
         if not renderer:
             raise Exception(sdl2.SDL_GetError())
 
-        config = AppConfig()
-        sdl2.SDL_RenderSetLogicalSize(renderer, config.final_resolution[0], config.final_resolution[1])
+        renderer_info = sdl2.SDL_RendererInfo()
+        sdl2.SDL_GetRendererInfo(renderer, renderer_info)
+        if not (renderer_info.flags & sdl2.SDL_RENDERER_PRESENTVSYNC):
+            print("Warning: VSYNC not available")
+
+        sdl2.SDL_RenderSetLogicalSize(
+            renderer, 
+            self.config.final_resolution[0], 
+            self.config.final_resolution[1]
+        )
 
         return window, renderer
 

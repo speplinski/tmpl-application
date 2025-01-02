@@ -3,11 +3,11 @@ import time
 import sdl2
 from threading import Thread, Lock
 from queue import Queue
-from ..config import AppConfig
+from integration.config import IntegratedConfig
 
 class ImageSequencePlayer:
     """Handles image sequence playback with interpolation"""
-    def __init__(self, config, texture_manager):
+    def __init__(self, config: IntegratedConfig, texture_manager):
         self.config = config
         self.texture_manager = texture_manager
         self.frame_buffer = Queue(maxsize=config.buffer_size)
@@ -28,19 +28,23 @@ class ImageSequencePlayer:
 
         while True:
             current_time = time.time()
-
             if current_time - last_frame_time >= frame_interval:
                 if self.frame_buffer.full():
-                    time.sleep(0.1)
+                    time.sleep(frame_interval * 0.1)
                     continue
 
+                current_seq = self.config.get_current_sequence()
+                if not current_seq or not current_seq['image_directory']:
+                    time.sleep(0.1)
+                    continue
+                
                 image_path = os.path.join(
-                    self.config.image_directory, 
+                    str(current_seq['image_directory']),
                     f"{current_index:09d}.jpg"
                 )
 
                 if not os.path.exists(image_path):
-                    time.sleep(0.5)
+                    time.sleep(0.1)
                     continue
 
                 texture = self.texture_manager.load_image(
@@ -54,7 +58,11 @@ class ImageSequencePlayer:
                     current_index += self.config.frame_step
                     last_frame_time = current_time
                 else:
-                    time.sleep(0.5)
+                    time.sleep(0.1)
+
+                buffer_fill = self.frame_buffer.qsize() / self.config.buffer_size
+                sleep_time = frame_interval * (0.1 if buffer_fill > 0.8 else 0.5)
+                time.sleep(sleep_time)
 
             time.sleep(0.001)
 
@@ -64,4 +72,7 @@ class ImageSequencePlayer:
             while not self.frame_buffer.empty():
                 _, texture = self.frame_buffer.get()
                 sdl2.SDL_DestroyTexture(texture)
-        self.config.image_directory = new_directory
+
+            if new_directory is not None:
+                current_seq = self.config.get_current_sequence()
+                current_seq['image_directory'] = new_directory
