@@ -83,7 +83,7 @@ class DepthMaskAdapter:
             self._initialize_masks()
             
             self.logger.log(f"Mask system initialized: {panorama_id}")
-            self.logger.log(f"Gray values/indexes: {mask_config.gray_indexes}")
+            self.logger.log(f"Gray values: {mask_config.gray_values}")
             
         except Exception as e:
             self.logger.log(f"Error initializing mask system: {e}")
@@ -206,12 +206,14 @@ class DepthMaskAdapter:
 
         # Process masks if there are active positions and enough time has passed
         current_time = time.time()
+        
+        # Convert counters to proper state format for mask processing
         active_sequences = []
-        for i, count in enumerate(counters):
+        
+        for column, count in enumerate(counters):
             if count > 0:
-                frame_num = min(count, 10)  # Limit to max 10 frames
-                active_sequences.append((i, frame_num))
-
+                active_sequences.append((column, count))
+                
         if active_sequences and (current_time - self.last_process_time >= self.config.COUNTER_INCREMENT_INTERVAL):
             try:
                 self.tmpl_monitor.process_state(counters)

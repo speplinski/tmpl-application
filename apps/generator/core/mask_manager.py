@@ -142,13 +142,14 @@ class MaskManager:
         """Process current state and save result mask"""
         if not state:
             return None
-        
-        target_size = (1280, 3840)
+            
+        # Create output mask with background value
+        target_size = (1280, 3840)  # height x width
         final_mask = np.full(target_size, 255, dtype=np.uint8)
         
+        # Sort gray values by index (highest to lowest) for proper layering
         sorted_gray_values = sorted(
             self.config.gray_values,
-            key=lambda x: self.config.gray_indexes.get(x, 0),
             reverse=True
         )
         
