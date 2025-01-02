@@ -39,7 +39,6 @@ class IntegratedConfig:
     current_sequence_index: int = 0
     
     # Timing configuration
-    video_trigger_frame: int = 240 # Frame to start video
     video_trigger_time: float = 120.0 # Time (seconds) to start video
     fade_duration: float = 2.0
     
@@ -67,7 +66,7 @@ class IntegratedConfig:
     
     # Timing configuration
     ui_refresh_interval: float = 0.04  # seconds (40ms)
-    counter_increment_interval: float = 0.5  # seconds (500ms)
+    counter_increment_interval: float = 1.0  # seconds
     mask_update_interval: float = 0.1  # seconds (100ms)
     
     # Integration settings

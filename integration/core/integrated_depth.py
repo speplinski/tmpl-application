@@ -15,6 +15,13 @@ class IntegratedDepth:
         self.config = config
         self.adapter = adapter
         
+        # Update adapter config with values from IntegratedConfig
+        self.adapter.config.COUNTER_INCREMENT_INTERVAL = config.counter_increment_interval
+        self.adapter.config.MIRROR_MODE = config.mirror_mode
+        self.adapter.config.DISPLAY_WINDOW = config.display_window
+        self.adapter.config.SHOW_STATS = config.show_stats
+        self.adapter.config.SHOW_CONSOLE_PREVIEW = config.show_visualization
+        
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._lock = Lock()

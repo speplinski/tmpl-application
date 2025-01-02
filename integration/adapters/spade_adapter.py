@@ -82,8 +82,16 @@ class SpadeAdapter:
             Colorized mask as RGB image
         """
         # Normalize mask to 0-1 range
-        mask_norm = mask.astype(float) / 255.0
-        colored = plt.get_cmap(self.colormap)(mask_norm)
+        min_val, max_val = np.min(mask), np.max(mask)
+        
+        if min_val == max_val:
+            mask_norm = np.zeros_like(mask, dtype=float)
+        else:
+            mask_norm = (mask - min_val) / (max_val - min_val)
+
+        # Apply colormap
+        colormap = plt.get_cmap(self.colormap)
+        colored = colormap(mask_norm)
         colored_rgb = (colored[:, :, :3] * 255).astype(np.uint8)
         
         return colored_rgb
