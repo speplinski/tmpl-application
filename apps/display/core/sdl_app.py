@@ -61,16 +61,18 @@ class SDLApp:
 
     def _init_font(self):
         font_paths = [
-            "/System/Library/Fonts/SFNS.ttf",
-            "/System/Library/Fonts/SFNSMono.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+            "/System/Library/Fonts/Menlo.ttc",
+            "/System/Library/Fonts/SFNSMono.ttf", 
+            "/System/Library/Fonts/Monaco.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf"
         ]
 
         for font_path in font_paths:
             if os.path.exists(font_path):
-                font = sdl2.sdlttf.TTF_OpenFont(font_path.encode(), 24)
+                font = sdl2.sdlttf.TTF_OpenFont(font_path.encode(), 36)
                 if font:
+                    print(f"Using font: {font_path}")
                     return font
         return None
 
@@ -78,7 +80,7 @@ class SDLApp:
         if not self.font:
             return None
 
-        text_surface = sdl2.sdlttf.TTF_RenderText_Blended(
+        text_surface = sdl2.sdlttf.TTF_RenderText_Solid(
             self.font,
             text.encode(),
             sdl2.SDL_Color(color[0], color[1], color[2], 255)
@@ -93,12 +95,12 @@ class SDLApp:
             sdl2.SDL_FreeSurface(text_surface)
             return None
 
-        w = ctypes.c_int()
-        h = ctypes.c_int()
-        sdl2.SDL_QueryTexture(text_texture, None, None, ctypes.byref(w), ctypes.byref(h))
-
-        text_rect = sdl2.SDL_Rect(x, y, w.value, h.value)
-
+        sdl2.SDL_SetTextureBlendMode(text_texture, sdl2.SDL_BLENDMODE_NONE)
+        
+        w = text_surface.contents.w
+        h = text_surface.contents.h
+        text_rect = sdl2.SDL_Rect(x, y, w, h)
+        
         sdl2.SDL_RenderCopy(self.renderer, text_texture, None, text_rect)
 
         sdl2.SDL_FreeSurface(text_surface)

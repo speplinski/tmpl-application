@@ -3,40 +3,46 @@ import time
 class PlaybackStatistics:
     """Handles playback statistics and display"""
     def __init__(self):
+        self.start_time = 0
         self.playback_time = 0.0
-        self.total_source_frames = 1
-        self.total_displayed_frames = 1
-        self.last_playback_start = time.time()
-        self.playing = True
+        self.source_frames = 0
+        self.displayed_frames = 0
+        self.playing = False
 
     def format_stats(self):
         """Format current playback statistics as a string"""
-        hours, remainder = divmod(self.playback_time, 3600)
+        if self.start_time == 0:
+            return "00:00:00.00 | Source frames: 0 (0.0/s) | Total frames: 0 (0.0/s)"
+        
+        elapsed = time.time() - self.start_time
+        hours, remainder = divmod(elapsed, 3600)
         minutes, seconds = divmod(remainder, 60)
 
-        source_fps = self.total_source_frames / max(self.playback_time, 0.001)
-        total_fps = self.total_displayed_frames / max(self.playback_time, 0.001)
+        source_fps = self.source_frames / max(elapsed, 0.001)
+        display_fps = self.displayed_frames / max(elapsed, 0.001)
 
         return (
             f"{int(hours):02}:{int(minutes):02}:{seconds:05.2f} | "
-            f"Source frames: {self.total_source_frames} ({source_fps:.1f}/s) | "
-            f"Total frames: {self.total_displayed_frames} ({total_fps:.1f}/s)"
+            f"Source frames: {self.source_frames} ({source_fps:.1f}/s) | "
+            f"Total frames: {self.displayed_frames} ({display_fps:.1f}/s)"
         )
 
-    def update_playback_time(self, current_time):
-        """Update playback time if playing"""
-        if self.playing:
-            self.playback_time += (current_time - self.last_playback_start)
-            self.last_playback_start = current_time
+    def update_source_frame(self):
+        """Call when new source frame arrives"""
+        self.source_frames += 1
 
-    def start_playback(self):
-        """Start or resume playback"""
-        if not self.playing:
-            self.last_playback_start = time.time()
-            self.playing = True
+    def update_display_frame(self):
+        """Call on every displayed frame (source or interpolated)"""
+        self.displayed_frames += 1
+       
+    def start_playback(self, start_time=None):
+        """Start or resume playback with optional start time"""
+        if start_time is not None:
+            self.start_time = start_time
+        elif self.start_time == 0:
+            self.start_time = time.time()
+        self.playing = True
 
     def pause_playback(self):
-        """Pause playback and update total time"""
-        if self.playing:
-            self.playback_time += time.time() - self.last_playback_start
-            self.playing = False
+        """Pause playback"""
+        self.playing = False
