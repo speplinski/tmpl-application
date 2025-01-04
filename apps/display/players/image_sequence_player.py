@@ -15,6 +15,7 @@ class ImageSequencePlayer:
         self.frame_buffer = Queue(maxsize=config.buffer_size)
         self.interpolation_buffer = Queue(maxsize=config.frames_to_interpolate)
         self.buffer_lock = Lock()
+        self.current_directory = None
         
         # Interpolation state
         self.current_frame_texture = None
@@ -167,15 +168,16 @@ class ImageSequencePlayer:
                     continue
 
                 current_seq = self.config.get_current_sequence()
-                if not current_seq or not current_seq['image_directory']:
+                if not current_seq or not self.current_directory:
                     time.sleep(0.1)
                     continue
                 
                 image_path = os.path.join(
-                    str(current_seq['image_directory']),
+                    str(self.current_directory),
                     f"{current_index:09d}.jpg"
                 )
 
+                #self.logger.log(f"--- Looking for file: {image_path}")
                 if not os.path.exists(image_path):
                     time.sleep(0.1)
                     continue
@@ -224,7 +226,5 @@ class ImageSequencePlayer:
             self.next_frame_data = None
             self.interpolation_index = 0
 
-            # Update directory if provided
-            if new_directory is not None:
-                current_seq = self.config.get_current_sequence()
-                current_seq['image_directory'] = new_directory
+            # Update directory
+            self.current_directory = new_directory

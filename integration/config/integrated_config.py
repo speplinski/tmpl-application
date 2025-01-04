@@ -39,7 +39,7 @@ class IntegratedConfig:
     current_sequence_index: int = 0
     
     # Timing configuration
-    video_trigger_time: float = 120.0 # Time (seconds) to start video
+    video_trigger_time: float = 15.0 # Time (seconds) to start video
     fade_duration: float = 2.0
     
     @property

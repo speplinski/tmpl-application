@@ -42,7 +42,7 @@ class DepthMaskAdapter:
         # Mask system components
         self._initialize_mask_system()
 
-    def _initialize_mask_system(self):
+    def _initialize_mask_system(self, panorama_id=None):
         """Initialize mask system configuration"""
         try:
             diagnostic = InitializationDiagnostic()
@@ -62,7 +62,7 @@ class DepthMaskAdapter:
                 mask_mappings = json.load(f)
                 
             # Create mask config from first panorama
-            panorama_id = next(iter(mask_mappings.keys()))
+            panorama_id = panorama_id or next(iter(mask_mappings.keys()))
             mapping = mask_mappings[panorama_id]
             
             # Combine static and sequence masks
