@@ -1,24 +1,23 @@
 import numpy as np
+from integration.config.integrated_config import IntegratedConfig
 
 class ColumnAnalyzer:
-    def __init__(self, config):
+    def __init__(self, config: IntegratedConfig):
         self.config = config
 
     def analyze_columns(self, distances, mirror=True):
-        """
-        Analyze columns for object presence and return binary representation.
-        Returns array where 1 indicates object presence in column, 0 indicates no object.
-        """
-        heatmap = np.array(distances).reshape(self.config.nV, self.config.nH)
+        """Analyze columns for object presence."""
+        grid_h, grid_v = self.config.depth.grid_dimensions
+        heatmap = np.array(distances).reshape(grid_v, grid_h)
+        
         if mirror:
             heatmap = np.fliplr(heatmap)
         
-        # Create mask for values between thresholds
-        mask = (heatmap >= self.config.MIN_THRESHOLD) & (heatmap <= self.config.MAX_THRESHOLD)
+        mask = ((heatmap >= self.config.depth.min_threshold) & 
+               (heatmap <= self.config.depth.max_threshold))
         
-        # Check each column for object presence
-        column_presence = np.zeros(self.config.nH, dtype=int)
-        for col in range(self.config.nH):
+        column_presence = np.zeros(grid_h, dtype=int)
+        for col in range(grid_h):
             if np.any(mask[:, col]):
                 column_presence[col] = 1
         

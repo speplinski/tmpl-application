@@ -2,17 +2,19 @@ import time
 import sdl2
 import cv2
 import os
+import json
 import ctypes
-from pathlib import Path
 from typing import Optional, Dict, Any, Tuple
+from pathlib import Path
 
 from .integrated_depth import IntegratedDepth
 from .integrated_spade import IntegratedSpade
-from apps.display.core import SDLApp, TextureManager, TransitionManager
+from apps.display.core import SDLApp, TextureManager
 from apps.display.players import VideoPlayer, ImageSequencePlayer
 from apps.display.utils import PlaybackStatistics
 from apps.depth_tracking.terminal_utils import TerminalContext
 from integration.adapters.depth_mask_adapter import DepthMaskAdapter
+from apps.generator.utils.dynamic_config import get_project_root
 from ..config import IntegratedConfig
 from ..utils.console_logger import ConsoleLogger
 
@@ -23,25 +25,23 @@ class IntegratedDisplay:
         self.terminal_context = None
         
         # Core display components
-        self.sdl_app = SDLApp(monitor_index, self.config)
+        self.sdl_app = SDLApp(monitor_index, config)
         self.texture_manager = TextureManager(self.sdl_app.renderer)
-        self.sequence_player = ImageSequencePlayer(self.config, self.texture_manager)
+        self.sequence_player = ImageSequencePlayer(config, self.texture_manager)
         
-        # Initialize subsystems
         self._init_subsystems()
-        
-        # Display state
         self._init_display_state()
         
         # Display geometry
         self.main_rect = sdl2.SDL_Rect(
             0, 
-            self.config.final_resolution_offset,
-            self.config.final_resolution_model[0],
-            self.config.final_resolution_model[1]
+            self.config.display.resolution_offset,
+            self.config.display.model_resolution[0],
+            self.config.display.model_resolution[1]
         )
         
-        for file in self.config.spade_output_dir.glob('*.jpg'):
+        # Clean output directory
+        for file in self.config.spade.output_dir.glob('*.jpg'):
             try:
                 file.unlink()
             except:
@@ -50,25 +50,23 @@ class IntegratedDisplay:
         self.stats = PlaybackStatistics()
         
     def _init_subsystems(self):
-        # Initialize depth adapter
-        self.depth_adapter = DepthMaskAdapter(logger=self.logger)
+        self.depth_adapter = DepthMaskAdapter(config=self.config, logger=self.logger)
         
-        # Initialize depth tracking if enabled
         self.depth_system = (
             IntegratedDepth(self.config, self.depth_adapter) 
             if self.config.enable_depth_tracking else None
         )
         
-        # Initialize SPADE system if enabled
-        self.spade_system = None
         if self.config.enable_mask_generation:
             self.spade_system = IntegratedSpade(self.config)
-            self.sequence_player.set_directory(str(self.config.spade_output_dir))
+            self.sequence_player.set_directory(str(self.config.spade.output_dir))
             self.sequence_player.start_loader_thread(1)
-            
+        else:
+            self.spade_system = None
+
     def _init_display_state(self):
         self.running = True
-        self.sequence_start_time = None  # Timer dla aktualnej sekwencji
+        self.sequence_start_time = None
         self.current_texture = None
         self.depth_texture = None
         self.overlay_texture = None
@@ -110,12 +108,10 @@ class IntegratedDisplay:
             if self._update(current_time):
                 self._render()
                 
-            # Process SPADE if enabled
             if self.config.enable_mask_generation and self.spade_system:
                 self.spade_system.watch_and_process()
             
-            # Small sleep to prevent CPU overload
-            time.sleep(0.01)
+            time.sleep(self.config.timing.refresh_interval)
 
     def _handle_events(self):
         event = sdl2.SDL_Event()
@@ -130,29 +126,26 @@ class IntegratedDisplay:
             self.running = False
             self.config.is_running = False
         elif key == sdl2.SDLK_m:
-            self.config.mirror_mode = not self.config.mirror_mode
+            self.config.depth.mirror_mode = not self.config.depth.mirror_mode
             if self.depth_system:
                 self.depth_system.update_config(self.config)
         elif key == sdl2.SDLK_d:
-            self.config.show_visualization = not self.config.show_visualization
+            self.config.display.show_visualization = not self.config.display.show_visualization
         elif key == sdl2.SDLK_w:
-            self.config.display_window = not self.config.display_window
-            if not self.config.display_window:
+            self.config.depth.display_window = not self.config.depth.display_window
+            if not self.config.depth.display_window:
                 cv2.destroyAllWindows()
         elif key == sdl2.SDLK_s:
-            self.config.show_stats = not self.config.show_stats
+            self.config.display.show_stats = not self.config.display.show_stats
 
     def _update(self, current_time: float) -> bool:
-        # Inicjalizacja timera sekwencji
         if self.sequence_start_time is None:
             self.sequence_start_time = current_time
 
-        # Sprawdź timeout sekwencji
-        if current_time - self.sequence_start_time >= self.config.video_trigger_time:
+        if current_time - self.sequence_start_time >= self.config.timing.video_trigger:
             self._switch_sequence()
             return True
 
-        # Sprawdź czy jest nowa klatka
         if not self.sequence_player.frame_buffer.empty():
             self._load_next_frame(current_time)
             return True
@@ -165,7 +158,6 @@ class IntegratedDisplay:
             
         _, texture = self.sequence_player.frame_buffer.get()
         
-        # Cleanup previous texture
         if self.current_texture:
             sdl2.SDL_DestroyTexture(self.current_texture)
             
@@ -176,14 +168,11 @@ class IntegratedDisplay:
         if not self.stats.start_time:
             self.stats.start_playback(current_time)
 
-
     def _render(self):
-        # Clear renderer
         sdl2.SDL_SetRenderDrawColor(self.sdl_app.renderer, 0, 0, 0, 255)
         sdl2.SDL_RenderClear(self.sdl_app.renderer)
         
-        # Render depth visualization if enabled
-        if self.config.show_visualization and self.depth_texture:
+        if self.config.display.show_visualization and self.depth_texture:
             sdl2.SDL_RenderCopy(
                 self.sdl_app.renderer,
                 self.depth_texture,
@@ -191,7 +180,6 @@ class IntegratedDisplay:
                 self.main_rect
             )
         
-        # Render current content
         if self.current_texture:
             sdl2.SDL_RenderCopy(
                 self.sdl_app.renderer,
@@ -200,7 +188,6 @@ class IntegratedDisplay:
                 self.main_rect
             )
             
-        # Render overlay
         if self.overlay_texture:
             sdl2.SDL_RenderCopy(
                 self.sdl_app.renderer,
@@ -209,48 +196,92 @@ class IntegratedDisplay:
                 None
             )
         
-        if self.config.show_stats:
+        if self.config.display.show_stats:
             stats_text = self.stats.format_stats()
             self.sdl_app.render_text(stats_text, 10, 10)
         
-        # Present frame
         sdl2.SDL_RenderPresent(self.sdl_app.renderer)
 
-    def _switch_sequence(self):
-        """Switch to next sequence."""
-        if self.current_texture:
-            sdl2.SDL_DestroyTexture(self.current_texture)
-            self.current_texture = None
-        
-        next_seq = self.config.next_sequence()
-        panorama_id = next_seq['image_directory'].split('/')[-2]
-        
-        # Reset
-        self.depth_adapter.depth_tracker.position_counters = [0] * len(self.depth_adapter.depth_tracker.position_counters)
-        self.sequence_player.start_loader_thread(1)
-        
-        for file in self.config.spade_output_dir.glob('*.jpg'):
+    def _reset_tracking_state(self):
+        """Reset tracking state before switching sequence."""
+        if self.depth_adapter:
+            self.depth_adapter.depth_tracker.position_counters = [0] * len(
+                self.depth_adapter.depth_tracker.position_counters
+            )
+            self.depth_adapter.depth_tracker.position_timers.clear()
+            self.depth_adapter.depth_tracker._active_columns.clear()
+            
+    def _clean_output_directory(self):
+        """Clean output directory before switching sequence."""
+        for file in self.config.spade.output_dir.glob('*.jpg'):
             try:
                 file.unlink()
-            except:
-                pass
-        
-        if self.spade_system:
-            self.spade_system.file_counter = 1
-        
-        self.depth_adapter._initialize_mask_system(panorama_id=panorama_id)
-        self.sequence_player.set_directory(str(self.config.spade_output_dir))
-        
-        self._load_overlay()
-        self.sequence_start_time = time.time()
-        self.logger.log(f"Switched to sequence: {panorama_id}")
+            except Exception as e:
+                self.logger.log(f"Error cleaning output file: {e}")
+
+    def _switch_sequence(self):
+        """Handle clean transition between sequences."""
+        try:
+            # Get next panorama_id
+            project_root = get_project_root()
+            mapping_path = project_root / 'data' / 'mask_mapping.json'
+            
+            with open(mapping_path) as f:
+                mask_mappings = json.load(f)
+                
+            current_id = self.spade_system.current_panorama_id
+            self.logger.log(f"Current ID: {current_id}")
+            
+            panorama_ids = list(mask_mappings.keys())
+            self.logger.log(f"Available panoramas: {panorama_ids}") 
+            
+            current_idx = panorama_ids.index(current_id)
+            self.logger.log(f"Current index: {current_idx}")
+            
+            next_idx = (current_idx + 1) % len(panorama_ids)
+            next_panorama = panorama_ids[next_idx]
+            self.spade_system.current_panorama_id = next_panorama
+            self.logger.log(f"Next index: {next_idx}, Next panorama: {next_panorama}")
+            
+            # Update config with new sequence path
+            self.config.sequence.image_directory = f"data/sequences/{next_panorama}/"
+            self.config.sequence.overlay_path = f"data/overlays/{next_panorama}.png"
+            
+            # Cleanup current state
+            if self.current_texture:
+                sdl2.SDL_DestroyTexture(self.current_texture)
+                self.current_texture = None
+            
+            # Initialize new sequence
+            self.depth_adapter._initialize_mask_system(panorama_id=next_panorama)
+            
+            # Reset states
+            self._reset_tracking_state()
+            if self.spade_system:
+                self.spade_system.reset_state()
+            self._clean_output_directory()
+            
+            # Setup output directory and sequence player
+            output_dir = str(self.config.spade.output_dir)
+            os.makedirs(output_dir, exist_ok=True)
+            
+            self.sequence_player.set_directory(output_dir)
+            self._load_overlay()
+            
+            # Restart loader thread
+            self.sequence_player.start_loader_thread(1)
+            
+            self.sequence_start_time = time.time()
+            self.logger.log(f"Switched to sequence: {next_panorama}")
+            
+        except Exception as e:
+            self.logger.log(f"Error during sequence transition: {e}")
 
     def _load_overlay(self):
-        current_seq = self.config.get_current_sequence()
-        if current_seq['overlay_path'] and os.path.exists(current_seq['overlay_path']):
+        if os.path.exists(self.config.sequence.overlay_path):
             self.overlay_texture = self.texture_manager.load_image(
-                current_seq['overlay_path'],
-                self.config.final_resolution,
+                self.config.sequence.overlay_path,
+                self.config.display.resolution,
                 keep_aspect=True
             )
 
@@ -264,7 +295,6 @@ class IntegratedDisplay:
         if self.sequence_player:
             self.sequence_player.set_directory(None)
         
-        # Cleanup textures
         for texture in [self.depth_texture, self.current_texture, self.overlay_texture]:
             if texture:
                 sdl2.SDL_DestroyTexture(texture)

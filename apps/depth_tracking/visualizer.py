@@ -1,92 +1,70 @@
-# visualizer.py
 import sys
 import numpy as np
 import cv2
+from integration.config.integrated_config import IntegratedConfig
 from .terminal_utils import TerminalUtils
 
 class Visualizer:
-    def __init__(self, config):
+    def __init__(self, config: IntegratedConfig):
         self.config = config
         self.frame_initialized = False
         
     def create_buffer(self) -> list[list[str]]:
-        return [[" " for _ in range(self.config.nH)] for _ in range(self.config.nV)]
+        grid_h, grid_v = self.config.depth.grid_dimensions
+        return [[" " for _ in range(grid_h)] for _ in range(grid_v)]
 
     def create_heatmap(self, distances, mirror=True):
-        """Create a CV2 heatmap visualization of the depth data."""
-        heatmap = np.array(distances).reshape(self.config.nV, self.config.nH)
+        """Create CV2 heatmap visualization."""
+        grid_h, grid_v = self.config.depth.grid_dimensions
+        heatmap = np.array(distances).reshape(grid_v, grid_h)
         
         if mirror:
             heatmap = np.fliplr(heatmap)
         
-        mask = (heatmap >= self.config.MIN_THRESHOLD) & (heatmap <= self.config.MAX_THRESHOLD)
+        mask = ((heatmap >= self.config.depth.min_threshold) & 
+               (heatmap <= self.config.depth.max_threshold))
         
         normalized = np.zeros_like(heatmap)
-        normalized[mask] = ((heatmap[mask] - self.config.MIN_THRESHOLD) / 
-                        (self.config.MAX_THRESHOLD - self.config.MIN_THRESHOLD) * 255)
+        normalized[mask] = ((heatmap[mask] - self.config.depth.min_threshold) / 
+                        (self.config.depth.max_threshold - self.config.depth.min_threshold) * 255)
         normalized = normalized.astype(np.uint8)
         
         heatmap_colored = cv2.applyColorMap(normalized, cv2.COLORMAP_JET)
         heatmap_colored[~mask] = [0, 0, 0]
         
         scale_factor = 80
-        heatmap_scaled = cv2.resize(heatmap_colored, 
-                                (self.config.nH * scale_factor, self.config.nV * scale_factor), 
-                                interpolation=cv2.INTER_NEAREST)
-        
-        return heatmap_scaled
+        return cv2.resize(heatmap_colored, 
+                       (grid_h * scale_factor, grid_v * scale_factor), 
+                       interpolation=cv2.INTER_NEAREST)
 
     def create_console_heatmap(self, distances, prev_buffer, mirror=True):
-        """Create and update console-based heatmap visualization."""
-        if not self.config.SHOW_CONSOLE_PREVIEW:
+        """Create and update console-based heatmap."""
+        if not self.config.display.show_visualization:
             return prev_buffer
 
-        heatmap = np.array(distances).reshape(self.config.nV, self.config.nH)
+        grid_h, grid_v = self.config.depth.grid_dimensions
+        heatmap = np.array(distances).reshape(grid_v, grid_h)
         
         if mirror:
             heatmap = np.fliplr(heatmap)
         
-        mask = (heatmap >= self.config.MIN_THRESHOLD) & (heatmap <= self.config.MAX_THRESHOLD)
+        mask = ((heatmap >= self.config.depth.min_threshold) & 
+               (heatmap <= self.config.depth.max_threshold))
+               
         normalized = np.zeros_like(heatmap, dtype=float)
-        normalized[mask] = ((heatmap[mask] - self.config.MIN_THRESHOLD) / 
-                        (self.config.MAX_THRESHOLD - self.config.MIN_THRESHOLD))
+        normalized[mask] = ((heatmap[mask] - self.config.depth.min_threshold) / 
+                        (self.config.depth.max_threshold - self.config.depth.min_threshold))
         
         chars = ' ░▒▓█'
-        current_buffer = [[" " for _ in range(self.config.nH)] for _ in range(self.config.nV)]
+        current_buffer = [[" " for _ in range(grid_h)] for _ in range(grid_v)]
 
         if not self.frame_initialized:
-            # Initialize frame
-            TerminalUtils.clear_screen()
-            TerminalUtils.hide_cursor()
-            
-            # Draw frame
-            TerminalUtils.move_cursor(1, 1)
-            print("┏" + "━" * (self.config.nH * 2) + "┓")
-            for i in range(self.config.nV):
-                TerminalUtils.move_cursor(1, i + 2)
-                print("┃" + " " * (self.config.nH * 2) + "┃")
-            TerminalUtils.move_cursor(1, self.config.nV + 2)
-            print("┗" + "━" * (self.config.nH * 2) + "┛")
-            
-            # Print static content
-            TerminalUtils.move_cursor(1, self.config.nV + 4)
-            print(f"Range: {self.config.MIN_THRESHOLD:.1f}m to {self.config.MAX_THRESHOLD:.1f}m")
-            TerminalUtils.move_cursor(1, self.config.nV + 5)
-            print("Controls:")
-            TerminalUtils.move_cursor(1, self.config.nV + 6)
-            print("  'q' - Exit")
-            TerminalUtils.move_cursor(1, self.config.nV + 7)
-            print("  'w' - Toggle window")
-            TerminalUtils.move_cursor(1, self.config.nV + 8)
-            print("  's' - Toggle stats")
-            TerminalUtils.move_cursor(1, self.config.nV + 9)
-            print("  'm' - Toggle mirror mode")
-            
+            self._initialize_frame(grid_h, grid_v)
             self.frame_initialized = True
 
         # Update heatmap
-        for i in range(self.config.nV):
-            for j in range(self.config.nH):
+        for i in range(grid_v):
+            for j in range(grid_h):
                 if mask[i, j]:
                     char_idx = int(normalized[i, j] * (len(chars) - 1))
                     current_char = chars[char_idx]
@@ -102,6 +80,36 @@ class Visualizer:
         
         return current_buffer
 
+    def _initialize_frame(self, grid_h: int, grid_v: int):
+        """Initialize terminal frame."""
+        TerminalUtils.clear_screen()
+        TerminalUtils.hide_cursor()
+        
+        # Draw frame
+        TerminalUtils.move_cursor(1, 1)
+        print("┏" + "━" * (grid_h * 2) + "┓")
+        for i in range(grid_v):
+            TerminalUtils.move_cursor(1, i + 2)
+            print("┃" + " " * (grid_h * 2) + "┃")
+        TerminalUtils.move_cursor(1, grid_v + 2)
+        print("┗" + "━" * (grid_h * 2) + "┛")
+        
+        # Print static content
+        TerminalUtils.move_cursor(1, grid_v + 4)
+        print(f"Range: {self.config.depth.min_threshold:.1f}m to {self.config.depth.max_threshold:.1f}m")
+        
+        controls = [
+            "Controls:",
+            "  'q' - Exit",
+            "  'w' - Toggle window",
+            "  's' - Toggle stats",
+            "  'm' - Toggle mirror mode"
+        ]
+        
+        for idx, text in enumerate(controls):
+            TerminalUtils.move_cursor(1, grid_v + 5 + idx)
+            print(text)
+
     def reset_frame(self):
-        """Reset frame initialization state"""
+        """Reset frame state."""
         self.frame_initialized = False

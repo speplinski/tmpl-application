@@ -5,20 +5,20 @@ import termios
 
 class TerminalUtils:
     @staticmethod
-    def is_data():
-        """Check if there is data available on stdin."""
+    def is_data() -> bool:
+        """Check for data on stdin."""
         return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
 
     @staticmethod
-    def get_key():
-        """Get a keypress from stdin without blocking."""
+    def get_key() -> str:
+        """Get keypress from stdin without blocking."""
         if TerminalUtils.is_data():
             return sys.stdin.read(1)
         return None
 
     @staticmethod
     def init_terminal():
-        """Initialize terminal for raw input."""
+        """Set terminal to raw mode."""
         fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(fd)
         try:
@@ -30,38 +30,38 @@ class TerminalUtils:
     @staticmethod
     def restore_terminal(old_settings):
         """Restore terminal settings."""
-        fd = sys.stdin.fileno()
         try:
+            fd = sys.stdin.fileno()
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         except termios.error:
             pass
 
     @staticmethod
     def move_cursor(x: int, y: int):
-        """Move terminal cursor to specified position."""
+        """Move cursor position."""
         sys.stdout.write(f"\033[{y};{x}H")
         sys.stdout.flush()
 
     @staticmethod
     def clear_screen():
-        """Clear entire screen."""
+        """Clear screen."""
         sys.stdout.write("\033[2J")
         sys.stdout.flush()
 
     @staticmethod
     def hide_cursor():
-        """Hide terminal cursor."""
+        """Hide cursor."""
         sys.stdout.write("\033[?25l")
         sys.stdout.flush()
 
     @staticmethod
     def show_cursor():
-        """Show terminal cursor."""
+        """Show cursor."""
         sys.stdout.write("\033[?25h")
         sys.stdout.flush()
 
+
 class TerminalContext:
-    """Context manager for terminal state."""
     def __init__(self, hide_cursor=True):
         self.hide_cursor = hide_cursor
         self.old_settings = None

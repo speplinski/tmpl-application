@@ -53,8 +53,8 @@ class SDLApp:
 
         sdl2.SDL_RenderSetLogicalSize(
             renderer, 
-            self.config.final_resolution[0], 
-            self.config.final_resolution[1]
+            self.config.display.resolution[0], 
+            self.config.display.resolution[1]
         )
 
         return window, renderer
